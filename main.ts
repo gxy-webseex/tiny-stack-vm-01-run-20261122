@@ -1,36 +1,22 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Opcode table: [byte, immediate bytes, pops, pushes], packed into one byte
-// (imm | pops<<3 | pushes<<5) + 1 so 0 means "unknown opcode".
-const OPS = [
-  [0x00, 0, 0, 0], [0x01, 1, 0, 1], [0x02, 4, 0, 1], [0x03, 0, 1, 0],
-  [0x04, 0, 1, 2], [0x05, 0, 2, 2], [0x06, 0, 2, 3], [0x07, 0, 3, 3],
-  [0x10, 0, 2, 1], [0x11, 0, 2, 1], [0x12, 0, 2, 1], [0x13, 0, 2, 1],
-  [0x14, 0, 2, 1], [0x15, 0, 2, 1], [0x16, 0, 2, 1], [0x17, 0, 1, 1],
-  [0x18, 0, 2, 1], [0x19, 0, 2, 1], [0x1a, 0, 2, 1], [0x1b, 0, 1, 1],
-  [0x1c, 0, 2, 1], [0x1d, 0, 2, 1], [0x1e, 0, 2, 1],
-  [0x20, 0, 2, 1], [0x21, 0, 2, 1], [0x22, 0, 2, 1],
-  [0x30, 2, 0, 0], [0x31, 2, 1, 0], [0x32, 2, 1, 0], [0x33, 2, 0, 0],
-  [0x34, 0, 0, 0], [0x40, 0, 1, 1], [0x41, 0, 2, 0],
-  [0x50, 0, 1, 0], [0x51, 0, 1, 0], [0x52, 0, 0, 1], [0x53, 0, 1, 0],
-];
-const T = new Uint8Array(84);
-for (const [o, i, po, pu] of OPS) T[o] = i + (po << 3) + (pu << 5) + 1;
+// Opcode -> (imm | pops<<3 | pushes<<5) + 1; absent = unknown opcode.
+const T={0:1,1:34,2:37,3:9,4:73,5:81,6:113,7:121,16:49,17:49,18:49,19:49,20:49,21:49,22:49,23:41,24:49,25:49,26:49,27:41,28:49,29:49,30:49,32:49,33:49,34:49,48:3,49:11,50:11,51:3,52:1,64:41,65:17,80:9,81:9,82:33,83:9};
 
-function run(p: Uint8Array, inp: Uint8Array): { out: Uint8Array; code: number } {
+function run(p, inp) {
   const D = new Int32Array(256);
   const C = new Int32Array(64);
   const M = new Int32Array(256);
   const out = new Uint8Array(65536);
   let sp = 0, csp = 0, olen = 0, ip = 0, pc = 0, steps = 0;
   const n = p.length;
-  const done = (code: number): { out: Uint8Array; code: number } => ({ out: out.subarray(0, olen), code });
+  const done = code => ({ out: out.subarray(0, olen), code });
   for (;;) {
     if (steps === 1000000) return done(10);
     if (pc < 0 || pc >= n) return done(9);
     const op = p[pc];
-    const v = op < 84 ? T[op] : 0;
+    const v = T[op] || 0;
     if (!v) return done(5);
     const w = v - 1, imm = w & 7, pops = (w >> 3) & 3, pushes = (w >> 5) & 3;
     if (pc + imm >= n) return done(9);
@@ -77,7 +63,7 @@ function run(p: Uint8Array, inp: Uint8Array): { out: Uint8Array; code: number } 
       case 0x18: case 0x19: case 0x1a: case 0x1c: case 0x1d: case 0x1e:
       case 0x20: case 0x21: case 0x22: {
         const b = D[sp - 1], a = D[sp - 2];
-        let r: number;
+        let r;
         switch (op) {
           case 0x10: r = (a + b) | 0; break;
           case 0x11: r = (a - b) | 0; break;
