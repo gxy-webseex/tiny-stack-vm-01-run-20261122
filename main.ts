@@ -1,3 +1,4 @@
+// A tiny stack VM: a correct, compact interpreter of make.fun's ISA (ISA.md).
 import {mkdirSync,readdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 
